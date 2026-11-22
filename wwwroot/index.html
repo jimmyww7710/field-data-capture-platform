@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Data Capture Platform</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Operations Console</p>
+      <h1>Field Data Capture Platform</h1>
+    </div>
+    <div class="header-actions">
+      <span id="healthStatus" class="status-badge">Checking service</span>
+      <button id="resetButton" class="button danger">Reset Demo</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stats" aria-label="Summary">
+      <article><span>Total Events</span><strong id="totalEvents">0</strong></article>
+      <article><span>Devices</span><strong id="deviceCount">0</strong></article>
+      <article><span>Pending Review</span><strong id="pendingCount">0</strong></article>
+      <article><span>Approved</span><strong id="approvedCount">0</strong></article>
+    </section>
+
+    <section class="workspace">
+      <article class="panel simulator">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Data Source</p>
+            <h2>Device Simulator</h2>
+          </div>
+        </div>
+        <div class="form-grid">
+          <label>Device ID
+            <input id="deviceId" value="sensor-north" maxlength="80">
+          </label>
+          <label>Event Count
+            <input id="eventCount" type="number" value="10" min="1" max="100">
+          </label>
+        </div>
+        <button id="simulateButton" class="button primary wide">Generate Events</button>
+      </article>
+
+      <article class="panel chart-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Live Metrics</p>
+            <h2>Latest Measurements</h2>
+          </div>
+        </div>
+        <div id="metricChart" class="chart" aria-label="Latest measurements chart"></div>
+      </article>
+    </section>
+
+    <section class="panel events-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Quality Review</p>
+          <h2>Captured Events</h2>
+        </div>
+        <button id="backupButton" class="button secondary">Create Snapshot</button>
+      </div>
+
+      <div class="filters">
+        <input id="searchInput" type="search" placeholder="Search device, type, or metric">
+        <select id="statusFilter">
+          <option value="">All statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Approved">Approved</option>
+          <option value="Rejected">Rejected</option>
+        </select>
+        <button id="filterButton" class="button secondary">Apply Filters</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Captured</th>
+              <th>Device</th>
+              <th>Type</th>
+              <th>Metric</th>
+              <th>Value</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="eventsBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="empty-state">No events found. Generate data to begin.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Recovery</p>
+          <h2>Data Snapshots</h2>
+        </div>
+      </div>
+      <div id="backupsList" class="backup-list"></div>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
