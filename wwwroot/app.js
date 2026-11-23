@@ -12,7 +12,9 @@ const elements = {
   backupsList: document.querySelector("#backupsList"),
   searchInput: document.querySelector("#searchInput"),
   statusFilter: document.querySelector("#statusFilter"),
-  toast: document.querySelector("#toast")
+  toast: document.querySelector("#toast"),
+  guide: document.querySelector(".workflow-guide"),
+  chartUpdate: document.querySelector("#chartUpdate")
 };
 
 async function api(path, options = {}) {
@@ -99,11 +101,15 @@ async function loadEvents() {
   elements.pendingCount.textContent = allEvents.filter(event => event.status === "Pending").length;
   elements.approvedCount.textContent = allEvents.filter(event => event.status === "Approved").length;
   renderChart(allEvents.slice(0, 20));
+  updateWorkflowProgress(allEvents.length);
+  if (allEvents.length)
+    elements.chartUpdate.textContent = `Updated ${new Date().toLocaleTimeString()}`;
 }
 
 function renderChart(events) {
   if (!events.length) {
-    elements.metricChart.innerHTML = `<span class="empty-state">No measurements available</span>`;
+    elements.metricChart.innerHTML = `<div class="empty-state"><strong>No readings yet</strong><span>Generate test records to see live measurements here.</span></div>`;
+    elements.chartUpdate.textContent = "Waiting for data";
     return;
   }
 
@@ -123,11 +129,32 @@ async function loadBackups() {
           <div>${backup.eventCount} events · ${backup.sizeBytes} bytes</div>
         </div>
         <span>${escapeHtml(backup.id)}</span>
-        <button class="button secondary" data-restore="${backup.id}">Restore</button>
+        <button class="button secondary" data-restore="${backup.id}">Restore Data</button>
       </div>
     `).join("")
-    : `<p class="empty-state">No snapshots have been created.</p>`;
+    : `<div class="empty-state"><strong>No backups yet</strong><span>After reviewing records, create a backup to preserve this state.</span></div>`;
 }
+
+function updateWorkflowProgress(eventCount) {
+  const firstStep = document.querySelector('[data-step="1"]');
+  const secondStep = document.querySelector('[data-step="2"]');
+  firstStep?.classList.toggle("completed", eventCount > 0);
+  secondStep?.classList.toggle("completed", eventCount > 0 && (
+    document.querySelector("#pendingCount").textContent !== String(eventCount)
+  ));
+}
+
+function markStepCompleted(stepNumber) {
+  document.querySelector(`[data-step="${stepNumber}"]`)?.classList.add("completed");
+}
+
+document.querySelector("#dismissGuide").addEventListener("click", () => {
+  elements.guide.classList.add("hidden");
+  window.localStorage.setItem("hideFieldDataGuide", "true");
+});
+
+if (window.localStorage.getItem("hideFieldDataGuide") === "true")
+  elements.guide.classList.add("hidden");
 
 document.querySelector("#simulateButton").addEventListener("click", async event => {
   event.target.disabled = true;
@@ -138,7 +165,8 @@ document.querySelector("#simulateButton").addEventListener("click", async event 
       method: "POST",
       body: JSON.stringify({ deviceId, count })
     });
-    showToast("Simulated events were captured.");
+    showToast(`${count} test records were generated.`);
+    markStepCompleted("1");
     await loadEvents();
   } catch (error) {
     showToast(error.message);
@@ -150,11 +178,17 @@ document.querySelector("#simulateButton").addEventListener("click", async event 
 document.querySelector("#filterButton").addEventListener("click", loadEvents);
 
 document.querySelector("#backupButton").addEventListener("click", async event => {
+  if (elements.totalEvents.textContent === "0") {
+    showToast("Generate test records before creating a backup.");
+    return;
+  }
+
   event.target.disabled = true;
   try {
     await api("/api/backups", { method: "POST" });
-    showToast("Snapshot created.");
+    showToast("Backup created successfully.");
     await loadBackups();
+    markStepCompleted("3");
   } catch (error) {
     showToast(error.message);
   } finally {
@@ -163,8 +197,11 @@ document.querySelector("#backupButton").addEventListener("click", async event =>
 });
 
 document.querySelector("#resetButton").addEventListener("click", async () => {
+  if (!window.confirm("Clear all demo records? Existing backups will be kept."))
+    return;
+
   await api("/api/demo/reset", { method: "POST" });
-  showToast("Demo data was reset.");
+  showToast("Demo records were cleared.");
   await Promise.all([loadEvents(), loadBackups()]);
 });
 
@@ -182,6 +219,7 @@ elements.eventsBody.addEventListener("click", async event => {
       })
     });
     showToast(`Event marked ${button.dataset.review.toLowerCase()}`);
+    markStepCompleted("2");
     await loadEvents();
   } catch (error) {
     showToast(error.message);
@@ -191,8 +229,11 @@ elements.eventsBody.addEventListener("click", async event => {
 elements.backupsList.addEventListener("click", async event => {
   const button = event.target.closest("[data-restore]");
   if (!button) return;
+  if (!window.confirm("Restore this backup and replace the current records?"))
+    return;
+
   await api(`/api/backups/${button.dataset.restore}/restore`, { method: "POST" });
-  showToast("Snapshot restored.");
+  showToast("Backup restored successfully.");
   await loadEvents();
 });
 
